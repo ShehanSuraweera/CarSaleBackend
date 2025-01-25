@@ -132,4 +132,68 @@ const uploadAdImages = async (req, res) => {
     console.log("error", error);
   }
 };
-module.exports = { createAd, uploadAdImages };
+
+const getAds = async (req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from("ads_vehicles")
+      .select(`*, ad_images (image_url, created_at)`);
+
+    if (error) {
+      return res.status(500).json({ message: "Database error", error });
+    }
+
+    res.status(200).json({ ads: data });
+  } catch (error) {
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
+
+const getTrendingAds = async (req, res) => {
+  const { make } = req.body;
+  // Ensure the 'make' field is provided
+  if (!make) {
+    return res.status(400).json({ message: "Make is required to filter ads" });
+  }
+  try {
+    const { data, error } = await supabase
+      .from("ads_vehicles")
+      .select(`*, ad_images (image_url, created_at)`)
+      .eq("make", make);
+
+    // Handle database error
+    if (error) {
+      return res.status(500).json({ message: "Database error", error });
+    }
+
+    // Return filtered ads
+    res.status(200).json({ ads: data });
+  } catch (error) {
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
+
+const getAd = async (req, res) => {
+  const { ad_id } = req.body;
+
+  if (!ad_id) {
+    return res.status(400).json({ message: "ad is is required to display ad" });
+  }
+
+  try {
+    const { data, error } = await supabase
+      .from("ads_vehicles")
+      .select(`*, ad_images (image_url, created_at)`)
+      .eq("ad_id", ad_id);
+
+    if (error) {
+      return res.status(500).json({ message: "Database error", error });
+    }
+
+    res.status(200).json({ ad: data[0] });
+  } catch (error) {
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
+
+module.exports = { createAd, uploadAdImages, getAds, getTrendingAds, getAd };
