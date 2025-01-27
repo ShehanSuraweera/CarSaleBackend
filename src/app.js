@@ -13,6 +13,7 @@ app.use(
     origin: [
       "http://localhost:3000",
       "https://car-sale-pzbrsc9w8-shehan-suraweeras-projects.vercel.app",
+      "https://car-sale-dev.vercel.app/",
     ],
     credentials: true,
   })
