@@ -86,4 +86,14 @@ const logout = (req, res) => {
   res.cookie("access-token", "").json(true);
 };
 
-module.exports = { register, login, logout };
+const userTokenVerify = async (req, res) => {
+  try {
+    res.status(200).json({ success: true, user: req.authenticatedUser });
+  } catch (error) {
+    // Catch any unexpected errors
+    console.error("Error verifying token:", error);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+};
+
+module.exports = { register, login, logout, userTokenVerify };
