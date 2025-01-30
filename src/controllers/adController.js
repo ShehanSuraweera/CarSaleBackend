@@ -2,7 +2,7 @@ const supabase = require("../config/supabase");
 
 const createAd = async (req, res) => {
   const {
-    owner_username,
+    user_id,
     make,
     model,
     frame_code,
@@ -25,7 +25,7 @@ const createAd = async (req, res) => {
   } = req.body;
 
   if (
-    !owner_username ||
+    !user_id ||
     !make ||
     !model ||
     !frame_code ||
@@ -49,15 +49,13 @@ const createAd = async (req, res) => {
     return res.status(400).json({ message: "All fields are required." });
   }
 
-  const { username } = req.authenticatedUser;
-
-  if (!username || username !== owner_username) {
-    return res
-      .status(403)
-      .json({ error: "Invalid request, user not authenticated." });
-  }
-
   try {
+    // Ensure Supabase client is initialized
+    if (!supabase) {
+      console.log("Supabase client is not initialized.");
+      return res.status(500).json({ message: "Internal server error." });
+    }
+
     const { data, error } = await supabase
       .from("ads_vehicles")
       .select("ad_id")
@@ -70,7 +68,7 @@ const createAd = async (req, res) => {
       .from("ads_vehicles")
       .insert([
         {
-          owner_username,
+          user_id,
           ad_id: adId,
           make,
           model,
@@ -92,14 +90,15 @@ const createAd = async (req, res) => {
           is_negotiable,
           vehicle_type,
         },
-      ])
-      .select();
+      ]);
 
     if (error) {
       return res.status(500).json({ message: "Database error", adError });
     }
 
-    res.status(201).json({ message: "ad posted successfully", adId: adId });
+    res
+      .status(201)
+      .json({ message: "ad posted successfully", adData, adId: adId });
   } catch (err) {
     res.status(500).json({ message: "Server error", error: err.message });
   }
@@ -224,18 +223,16 @@ const getAd = async (req, res) => {
 };
 
 const getAdsByUser = async (req, res) => {
-  const { owner_username } = req.body;
-  if (!owner_username) {
-    return res
-      .status(400)
-      .json({ message: "Username is required to display ads" });
+  const { id } = req.body;
+  if (!id) {
+    return res.status(400).json({ message: "User is required to display ads" });
   }
 
   try {
     const { data, error } = await supabase
       .from("ads_vehicles")
       .select(`*, ad_images (image_url, created_at)`)
-      .eq("owner_username", owner_username);
+      .eq("user_id", id);
 
     if (error) {
       return res.status(500).json({ message: "Database error", error });

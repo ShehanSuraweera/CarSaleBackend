@@ -1,28 +1,24 @@
 const supabase = require("../config/supabase");
 
 const profile = async (req, res) => {
-  // Assuming the token contains the username as payload
-  const { username } = req.authenticatedUser; // Retrieve the username from the validated token
+  const { user_id } = req.body;
 
-  if (!username) {
-    return res
-      .status(400)
-      .json({ error: "Invalid request, user not authenticated." });
+  if (!user_id) {
+    return res.status(400).json({ error: "Invalid request" });
   }
-
   // Query the database for user information
   try {
-    const { data, error } = await supabase
-      .from("users")
-      .select("user_name, name, email, phone, city")
-      .eq("user_name", username)
-      .single();
-
-    if (error || !data) {
-      return res.status(404).json({ error: "User not found" });
+    const { data: userData, error: userError } = await supabase
+      .from("profiles")
+      .select("*")
+      .eq("id", user_id);
+    if (userError) {
+      return res
+        .status(500)
+        .json({ error: "Database error", message: userError.message });
     }
 
-    res.status(200).json({ user: data });
+    res.status(200).json({ user: userData });
   } catch (err) {
     res.status(500).json({ error: "Server error", message: err.message });
   }
