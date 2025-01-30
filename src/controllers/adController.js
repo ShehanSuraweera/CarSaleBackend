@@ -28,18 +28,11 @@ const createAd = async (req, res) => {
     !user_id ||
     !make ||
     !model ||
-    !frame_code ||
     !build_year ||
     !transmission ||
     !body_type ||
     !vehicle_condition ||
-    !reg_year ||
-    !mileage ||
-    !engine ||
-    !colour ||
     !fuel_type ||
-    !price ||
-    !owner_comments ||
     !owner_contact ||
     !ad_location ||
     !owner_display_name ||
