@@ -129,7 +129,8 @@ const getAds = async (req, res) => {
   try {
     const { data, error } = await supabase
       .from("ads_vehicles")
-      .select(`*, ad_images (image_url, created_at)`);
+      .select(`*, ad_images (image_url, created_at)`)
+      .order("created_at", { ascending: false });
 
     if (error) {
       return res.status(500).json({ message: "Database error", error });
