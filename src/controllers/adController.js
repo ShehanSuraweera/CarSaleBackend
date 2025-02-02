@@ -1,7 +1,7 @@
 const supabase = require("../config/supabase");
 
 const createAd = async (req, res) => {
-  let {
+  const {
     user_id,
     make,
     model,
@@ -15,7 +15,7 @@ const createAd = async (req, res) => {
     engine,
     colour,
     fuel_type,
-    price,
+
     owner_comments,
     owner_contact,
     ad_location,
@@ -23,6 +23,8 @@ const createAd = async (req, res) => {
     is_negotiable,
     vehicle_type,
   } = req.body;
+
+  let { price } = req.body;
 
   if (
     !user_id ||
@@ -39,7 +41,7 @@ const createAd = async (req, res) => {
     is_negotiable === undefined ||
     !vehicle_type
   ) {
-    return res.status(400).json({ message: "All fields are required." });
+    return res.status(400).json({ message: "mandotaory fields are required." });
   }
   if (price == "" || price == null) {
     price = "negotiable";
