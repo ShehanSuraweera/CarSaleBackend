@@ -15,7 +15,6 @@ const createAd = async (req, res) => {
     engine,
     colour,
     fuel_type,
-
     owner_comments,
     owner_contact,
     ad_location,

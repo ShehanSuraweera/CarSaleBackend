@@ -8,7 +8,6 @@ const {
   getAd,
   getAdsByUser,
 } = require("../controllers/adController");
-const { validateToken } = require("../middleware/authMiddleware");
 const upload = require("../middleware/multer");
 
 router.post("/create", upload.none(), createAd);
