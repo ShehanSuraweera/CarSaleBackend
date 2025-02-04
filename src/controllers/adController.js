@@ -130,17 +130,64 @@ const uploadAdImages = async (req, res) => {
 };
 
 const getAds = async (req, res) => {
+  const {
+    query,
+    make,
+    model,
+    type,
+    minPrice,
+    maxPrice,
+    bodyType,
+    transmission,
+    location,
+    maxMileage,
+    buildYear,
+  } = req.query;
+
   try {
-    const { data, error } = await supabase
+    let supabaseQuery = supabase
       .from("ads_vehicles")
       .select(`*, ad_images (image_url, created_at)`)
       .order("created_at", { ascending: false });
 
-    if (error) {
-      return res.status(500).json({ message: "Database error", error });
+    if (query) {
+      supabaseQuery = supabaseQuery.ilike("title", `%${query}%`);
+    }
+    if (make) {
+      supabaseQuery = supabaseQuery.eq("make", make);
+    }
+    if (model) {
+      supabaseQuery = supabaseQuery.eq("model", model);
+    }
+    if (type) {
+      supabaseQuery = supabaseQuery.eq("body_type", type);
+    }
+    if (minPrice) {
+      supabaseQuery = supabaseQuery.gte("price", minPrice);
+    }
+    if (maxPrice) {
+      supabaseQuery = supabaseQuery.lte("price", maxPrice);
+    }
+    if (bodyType) {
+      supabaseQuery = supabaseQuery.eq("body_type", bodyType);
+    }
+    if (transmission) {
+      supabaseQuery = supabaseQuery.eq("transmission", transmission);
+    }
+    if (location) {
+      supabaseQuery = supabaseQuery.eq("ad_location", location);
+    }
+    if (maxMileage) {
+      supabaseQuery = supabaseQuery.lte("mileage", maxMileage);
+    }
+    if (buildYear) {
+      supabaseQuery = supabaseQuery.gte("build_year", buildYear);
     }
 
-    res.status(200).json({ ads: data });
+    const { data, error } = await supabaseQuery;
+
+    if (error) return res.status(500).json({ error: error.message });
+    res.json({ ads: data });
   } catch (error) {
     res.status(500).json({ message: "Server error", error: error.message });
   }
