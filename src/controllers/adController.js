@@ -47,6 +47,9 @@ const createAd = async (req, res) => {
   mileage = cleanString(mileage);
   price = cleanString(price);
 
+  const title =
+    make + " " + model + " " + frame_code && frame_code + " " + build_year;
+
   try {
     // Ensure Supabase client is initialized
     if (!supabase) {
@@ -87,6 +90,7 @@ const createAd = async (req, res) => {
           owner_display_name,
           is_negotiable,
           vehicle_type,
+          title,
         },
       ]);
 
