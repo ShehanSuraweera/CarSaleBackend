@@ -11,7 +11,6 @@ const createAd = async (req, res) => {
     body_type,
     vehicle_condition,
     reg_year,
-    mileage,
     engine,
     colour,
     fuel_type,
@@ -23,7 +22,7 @@ const createAd = async (req, res) => {
     vehicle_type,
   } = req.body;
 
-  let { price } = req.body;
+  let { price, mileage } = req.body;
 
   if (
     !user_id ||
@@ -42,9 +41,11 @@ const createAd = async (req, res) => {
   ) {
     return res.status(400).json({ message: "mandotaory fields are required." });
   }
-  if (price == "" || price == null) {
-    price = "negotiable";
+  if (price?.trim() == "") {
+    price = null;
   }
+  mileage = cleanString(mileage);
+  price = cleanString(price);
 
   try {
     // Ensure Supabase client is initialized
@@ -129,20 +130,27 @@ const uploadAdImages = async (req, res) => {
   }
 };
 
+function cleanString(input) {
+  return parseInt(input?.replace(/[^0-9]/g, ""), 10);
+}
+
 const getAds = async (req, res) => {
   const {
     query,
     make,
     model,
     type,
-    minPrice,
-    maxPrice,
     bodyType,
     transmission,
     location,
-    maxMileage,
     buildYear,
   } = req.query;
+
+  let { maxMileage, maxPrice, minPrice } = req.query;
+
+  maxMileage = cleanString(maxMileage);
+  maxPrice = cleanString(maxPrice);
+  minPrice = cleanString(minPrice);
 
   try {
     let supabaseQuery = supabase
