@@ -47,8 +47,9 @@ const createAd = async (req, res) => {
   mileage = cleanString(mileage);
   price = cleanString(price);
 
-  const title =
-    make + " " + model + " " + frame_code && frame_code + " " + build_year;
+  const title = `${make || ""} ${model || ""} ${frame_code || ""} ${
+    build_year || ""
+  }`.trim();
 
   try {
     // Ensure Supabase client is initialized
