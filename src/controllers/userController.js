@@ -10,8 +10,9 @@ const profile = async (req, res) => {
   try {
     const { data: userData, error: userError } = await supabase
       .from("profiles")
-      .select("*")
-      .eq("id", user_id);
+      .select("*, cities!inner(id,name, districts!inner(id,name))")
+      .eq("id", user_id)
+      .single();
     if (userError) {
       return res
         .status(500)
@@ -53,4 +54,7 @@ const updateProfile = async (req, res) => {
   }
 };
 
-module.exports = { profile, updateProfile };
+module.exports = {
+  profile,
+  updateProfile,
+};

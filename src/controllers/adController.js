@@ -16,10 +16,10 @@ const createAd = async (req, res) => {
     fuel_type,
     owner_comments,
     owner_contact,
-    ad_location,
     owner_display_name,
     is_negotiable,
     vehicle_type,
+    city_id,
   } = req.body;
 
   let { price, mileage } = req.body;
@@ -34,7 +34,7 @@ const createAd = async (req, res) => {
     !vehicle_condition ||
     !fuel_type ||
     !owner_contact ||
-    !ad_location ||
+    !city_id ||
     !owner_display_name ||
     is_negotiable === undefined ||
     !vehicle_type
@@ -58,20 +58,11 @@ const createAd = async (req, res) => {
       return res.status(500).json({ message: "Internal server error." });
     }
 
-    const { data, error } = await supabase
-      .from("ads_vehicles")
-      .select("ad_id")
-      .order("ad_id", { ascending: false })
-      .limit(1);
-
-    const adId = data.length > 0 ? data[0].ad_id + 1 : 1;
-
     const { data: adData, error: adError } = await supabase
       .from("ads_vehicles")
       .insert([
         {
           user_id,
-          ad_id: adId,
           make,
           model,
           frame_code,
@@ -87,23 +78,31 @@ const createAd = async (req, res) => {
           price,
           owner_comments,
           owner_contact,
-          ad_location,
+          city_id,
           owner_display_name,
           is_negotiable,
           vehicle_type,
           title,
         },
-      ]);
+      ])
+      .select("ad_id");
 
-    if (error) {
-      return res.status(500).json({ message: "Database error", adError });
+    if (adError) {
+      console.log("Ad Insertion Error:", adError);
+      return res
+        .status(500)
+        .json({ message: "Database error", error: adError });
     }
+
+    const adId = adData?.[0]?.ad_id;
 
     res
       .status(201)
       .json({ message: "ad posted successfully", adData, adId: adId });
   } catch (err) {
-    res.status(500).json({ message: "Server error", error: err.message });
+    return res
+      .status(500)
+      .json({ message: "Server error", error: err.message });
   }
 };
 
@@ -111,7 +110,9 @@ const uploadAdImages = async (req, res) => {
   const { ad_id, image_url } = req.body;
 
   if (!ad_id || !image_url) {
-    res.status(400).json({ message: "ad_id and image url are required" });
+    return res
+      .status(400)
+      .json({ message: "ad_id and image url are required" });
   }
 
   try {
@@ -126,12 +127,16 @@ const uploadAdImages = async (req, res) => {
       .select();
 
     if (error) {
+      console.error("Supabase Insert Error:", error);
       return res.status(500).json({ message: "Database error", error });
     }
 
     res.status(201).json({ message: "Uploaded", image_url: image_url });
   } catch (error) {
-    console.log("error", error);
+    console.error("Unhandled error in uploadAdImages:", error);
+    return res
+      .status(500)
+      .json({ message: "Server error", error: error.message });
   }
 };
 
@@ -149,9 +154,13 @@ const getAds = async (req, res) => {
     transmission,
     location,
     buildYear,
+    district_id,
+    city_id,
   } = req.query;
 
   let { maxMileage, maxPrice, minPrice } = req.query;
+
+  console.log(district_id);
 
   maxMileage = cleanString(maxMileage);
   maxPrice = cleanString(maxPrice);
@@ -160,7 +169,9 @@ const getAds = async (req, res) => {
   try {
     let supabaseQuery = supabase
       .from("ads_vehicles")
-      .select(`*, ad_images (image_url, created_at)`)
+      .select(
+        `*, ad_images (image_url, created_at), cities!inner(name, districts!inner(name))`
+      )
       .order("created_at", { ascending: false });
 
     if (query) {
@@ -195,6 +206,12 @@ const getAds = async (req, res) => {
     }
     if (buildYear) {
       supabaseQuery = supabaseQuery.gte("build_year", buildYear);
+    }
+    if (district_id) {
+      supabaseQuery = supabaseQuery.eq("cities.district_id", district_id);
+    }
+    if (city_id) {
+      supabaseQuery = supabaseQuery.eq("cities.id", city_id);
     }
 
     const { data, error } = await supabaseQuery;
@@ -265,8 +282,15 @@ const getAd = async (req, res) => {
   try {
     const { data, error } = await supabase
       .from("ads_vehicles")
-      .select(`*, ad_images (image_url, created_at)`)
-      .eq("ad_id", ad_id);
+      .select(
+        `
+        *,
+        ad_images (image_url, created_at),
+         cities!inner(name, districts!inner(name))
+      `
+      )
+      .eq("ad_id", ad_id)
+      .single();
 
     if (error) {
       return res.status(500).json({ message: "Database error", error });
@@ -274,7 +298,7 @@ const getAd = async (req, res) => {
 
     updateViews(ad_id);
 
-    res.status(200).json({ ad: data[0] });
+    res.status(200).json({ ad: data });
   } catch (error) {
     res.status(500).json({ message: "Server error", error: error.message });
   }

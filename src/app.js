@@ -5,6 +5,7 @@ const cookieParser = require("cookie-parser");
 const authRoutes = require("./routes/authRoutes");
 const userRoutes = require("./routes/userRoutes");
 const adRoutes = require("./routes/adRoutes");
+const infoRoutes = require("./routes/infoRoutes");
 
 const app = express();
 
@@ -34,5 +35,5 @@ app.use(cookieParser());
 app.use("/auth", authRoutes);
 app.use("/user", userRoutes);
 app.use("/uploads", adRoutes);
-
+app.use("/info", infoRoutes);
 module.exports = app;
