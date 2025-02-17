@@ -12,14 +12,14 @@ const profile = async (req, res) => {
       .from("profiles")
       .select("*, cities!inner(id,name, districts!inner(id,name))")
       .eq("id", user_id)
-      .single();
+      .select();
     if (userError) {
       return res
         .status(500)
         .json({ error: "Database error", message: userError.message });
     }
 
-    res.status(200).json({ user: userData });
+    res.status(200).json({ user: userData[0] });
   } catch (err) {
     res.status(500).json({ error: "Server error", message: err.message });
   }

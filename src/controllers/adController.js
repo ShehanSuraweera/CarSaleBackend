@@ -3,8 +3,7 @@ const supabase = require("../config/supabase");
 const createAd = async (req, res) => {
   const {
     user_id,
-    make,
-    model,
+    model_id,
     frame_code,
     build_year,
     transmission,
@@ -18,7 +17,6 @@ const createAd = async (req, res) => {
     owner_contact,
     owner_display_name,
     is_negotiable,
-    vehicle_type,
     city_id,
   } = req.body;
 
@@ -26,8 +24,7 @@ const createAd = async (req, res) => {
 
   if (
     !user_id ||
-    !make ||
-    !model ||
+    !model_id ||
     !build_year ||
     !transmission ||
     !body_type ||
@@ -36,8 +33,7 @@ const createAd = async (req, res) => {
     !owner_contact ||
     !city_id ||
     !owner_display_name ||
-    is_negotiable === undefined ||
-    !vehicle_type
+    is_negotiable === undefined
   ) {
     return res.status(400).json({ message: "mandotaory fields are required." });
   }
@@ -46,10 +42,27 @@ const createAd = async (req, res) => {
   }
   mileage = cleanString(mileage);
   price = cleanString(price);
+  let title = "";
+  try {
+    const { data, error } = await supabase
+      .from("models")
+      .select("name makes(name)")
+      .eq("id", model_id)
+      .single();
 
-  const title = `${make || ""} ${model || ""} ${frame_code || ""} ${
-    build_year || ""
-  }`.trim();
+    if (error) {
+      console.log("Model Fetch Error:", error);
+    }
+
+    const make = data.makes.name;
+    const model = data.name;
+
+    title = `${make || ""} ${model || ""} ${frame_code || ""} ${
+      build_year || ""
+    }`.trim();
+  } catch (error) {
+    console.log(error);
+  }
 
   try {
     // Ensure Supabase client is initialized
@@ -63,8 +76,7 @@ const createAd = async (req, res) => {
       .insert([
         {
           user_id,
-          make,
-          model,
+          model_id,
           frame_code,
           build_year,
           transmission,
@@ -81,7 +93,6 @@ const createAd = async (req, res) => {
           city_id,
           owner_display_name,
           is_negotiable,
-          vehicle_type,
           title,
         },
       ])
@@ -147,9 +158,9 @@ function cleanString(input) {
 const getAds = async (req, res) => {
   const {
     query,
-    make,
-    model,
-    type,
+    make_id,
+    model_id,
+    vehicle_type_id,
     bodyType,
     transmission,
     location,
@@ -170,21 +181,21 @@ const getAds = async (req, res) => {
     let supabaseQuery = supabase
       .from("ads_vehicles")
       .select(
-        `*, ad_images (image_url, created_at), cities!inner(name, districts!inner(name))`
+        `*, ad_images (image_url, created_at), cities!inner(name, districts!inner(name)), models!inner(name, vehicle_type_id, makes!inner(id,name))`
       )
       .order("created_at", { ascending: false });
 
     if (query) {
       supabaseQuery = supabaseQuery.ilike("title", `%${query}%`);
     }
-    if (make) {
-      supabaseQuery = supabaseQuery.eq("make", make);
+    if (make_id) {
+      supabaseQuery = supabaseQuery.eq("models.makes.make_id", make_id);
     }
-    if (model) {
-      supabaseQuery = supabaseQuery.eq("model", model);
+    if (model_id) {
+      supabaseQuery = supabaseQuery.eq("model_id", model_id);
     }
-    if (type) {
-      supabaseQuery = supabaseQuery.eq("body_type", type);
+    if (bodyType) {
+      supabaseQuery = supabaseQuery.eq("body_type", bodyType);
     }
     if (minPrice) {
       supabaseQuery = supabaseQuery.gte("price", minPrice);
@@ -216,27 +227,58 @@ const getAds = async (req, res) => {
 
     const { data, error } = await supabaseQuery;
 
+    // If data is found, format each ad
+    const formattedAds = data.map((ad) => {
+      const formattedAd = {
+        ...ad,
+        make: { name: ad.models.makes.name, id: ad.models.makes.id },
+        model: { name: ad.models.name, id: ad.model_id },
+        vehicle_type_id: ad.models.vehicle_type_id,
+        city: { name: ad.cities.name, id: ad.city_id },
+        district: {
+          name: ad.cities.districts.name,
+          id: ad.cities.district_id,
+        },
+        images: ad.ad_images ? ad.ad_images.map((img) => img.image_url) : [],
+      };
+
+      // Clean up unnecessary fields
+      delete formattedAd.ad_images;
+      delete formattedAd.models;
+      delete formattedAd.cities;
+      delete formattedAd.city_id;
+      delete formattedAd.model_id;
+
+      return formattedAd;
+    });
+
     if (error) return res.status(500).json({ error: error.message });
-    res.json({ ads: data });
+    res.json({ ads: formattedAds });
   } catch (error) {
     res.status(500).json({ message: "Server error", error: error.message });
   }
 };
 
 const getTrendingAds = async (req, res) => {
-  const { make, type } = req.body;
+  const { make_id, vehicle_type_id } = req.body;
   // Ensure the 'make' field is provided
-  if (!make && !type) {
+  if (!make_id && !vehicle_type_id) {
     return res
       .status(400)
-      .json({ message: "Make and Type is required to filter ads" });
+      .json({ message: "Both make_id and vehicle_type_id are required" });
   }
   try {
     const { data, error } = await supabase
       .from("ads_vehicles")
-      .select(`*, ad_images (image_url, created_at)`)
-      .eq("make", make)
-      .eq("vehicle_type", type)
+      .select(
+        `price,ad_id, 
+        ad_images (image_url, created_at), 
+        models!inner(name, vehicle_type_id, 
+          makes!inner(id, name)
+        )`
+      )
+      .filter("models.makes.id", "eq", make_id) // Correct filtering
+      .filter("models.vehicle_type_id", "eq", vehicle_type_id)
       .order("views", { ascending: false })
       .limit(10);
 
@@ -286,7 +328,8 @@ const getAd = async (req, res) => {
         `
         *,
         ad_images (image_url, created_at),
-         cities!inner(name, districts!inner(name))
+         cities!inner(name, district_id, districts!inner(name)),
+         models!inner(name, vehicle_type_id, makes!inner(id,name))
       `
       )
       .eq("ad_id", ad_id)
@@ -296,9 +339,28 @@ const getAd = async (req, res) => {
       return res.status(500).json({ message: "Database error", error });
     }
 
+    const formattedData = {
+      ...data,
+      make: { name: data.models.makes.name, id: data.models.makes.id },
+      model: { name: data.models.name, id: data.model_id },
+      vehicle_type_id: data.models.vehicle_type_id,
+      city: { name: data.cities.name, id: data.city_id },
+      district: {
+        name: data.cities.districts.name,
+        id: data.cities.district_id,
+      },
+      images: data.ad_images ? data.ad_images.map((img) => img.image_url) : [],
+    };
+
+    delete formattedData.ad_images;
+    delete formattedData.models;
+    delete formattedData.cities;
+    delete formattedData.city_id;
+    delete formattedData.model_id;
+
     updateViews(ad_id);
 
-    res.status(200).json({ ad: data });
+    res.status(200).json({ ad: formattedData });
   } catch (error) {
     res.status(500).json({ message: "Server error", error: error.message });
   }
@@ -313,14 +375,215 @@ const getAdsByUser = async (req, res) => {
   try {
     const { data, error } = await supabase
       .from("ads_vehicles")
-      .select(`*, ad_images (image_url, created_at)`)
+      .select(
+        `*, ad_images (image_url, created_at),
+         cities!inner(name, district_id, districts!inner(name)),
+         models!inner(name, vehicle_type_id, makes!inner(id,name))`
+      )
       .eq("user_id", id);
 
     if (error) {
       return res.status(500).json({ message: "Database error", error });
     }
 
-    res.status(200).json({ ads: data });
+    // If data is found, format each ad
+    const formattedAds = data.map((ad) => {
+      const formattedAd = {
+        ...ad,
+        make: { name: ad.models.makes.name, id: ad.models.makes.id },
+        model: { name: ad.models.name, id: ad.model_id },
+        vehicle_type_id: ad.models.vehicle_type_id,
+        city: { name: ad.cities.name, id: ad.city_id },
+        district: {
+          name: ad.cities.districts.name,
+          id: ad.cities.district_id,
+        },
+        images: ad.ad_images ? ad.ad_images.map((img) => img.image_url) : [],
+      };
+
+      // Clean up unnecessary fields
+      delete formattedAd.ad_images;
+      delete formattedAd.models;
+      delete formattedAd.cities;
+      delete formattedAd.city_id;
+      delete formattedAd.model_id;
+
+      return formattedAd;
+    });
+
+    res.status(200).json({ ads: formattedAds });
+  } catch (error) {
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
+
+const deleteImagesByAdId = async (ad_id, bucketName) => {
+  try {
+    // Fetch all images for the given ad_id
+    const { data: images, error: fetchError } = await supabase
+      .from("ad_images")
+      .select("image_url")
+      .eq("ad_id", ad_id);
+
+    if (fetchError) {
+      console.error("Error fetching images:", fetchError.message);
+      throw fetchError;
+    }
+
+    if (!images || images.length === 0) {
+      console.log("No images found for ad_id:", ad_id);
+      return;
+    }
+
+    // Extract file paths from URLs
+    const filePaths = images.map(
+      (img) => img.image_url.split(`/${bucketName}/`)[1]
+    );
+
+    // Delete images from Supabase Storage
+    const { error: storageError } = await supabase.storage
+      .from(bucketName)
+      .remove(filePaths);
+
+    if (storageError) {
+      console.error(
+        "Error deleting images from storage:",
+        storageError.message
+      );
+      throw storageError;
+    }
+
+    // Delete image records from the database
+    const { error: dbError } = await supabase
+      .from("ad_images")
+      .delete()
+      .match({ ad_id });
+
+    if (dbError) {
+      console.error("Error deleting image records:", dbError.message);
+      throw dbError;
+    }
+  } catch (error) {
+    console.error("Error in deleteImagesByAdId:", error);
+  }
+};
+
+const editAd = async (req, res) => {
+  const {
+    ad_id,
+    user_id,
+    model_id,
+    frame_code,
+    build_year,
+    transmission,
+    body_type,
+    vehicle_condition,
+    reg_year,
+    engine,
+    colour,
+    fuel_type,
+    owner_comments,
+    owner_contact,
+    owner_display_name,
+    is_negotiable,
+    city_id,
+  } = req.body;
+
+  let { price, mileage } = req.body;
+
+  if (
+    !user_id ||
+    !model_id ||
+    !build_year ||
+    !transmission ||
+    !body_type ||
+    !vehicle_condition ||
+    !fuel_type ||
+    !owner_contact ||
+    !city_id ||
+    !owner_display_name ||
+    is_negotiable === undefined
+  ) {
+    return res.status(400).json({ message: "mandotaory fields are required." });
+  }
+  if (price?.trim() == "") {
+    price = null;
+  }
+  mileage = cleanString(mileage);
+  price = cleanString(price);
+  let title = "";
+  try {
+    const { data, error } = await supabase
+      .from("models")
+      .select("name, makes(name)")
+      .eq("id", model_id)
+      .single();
+
+    if (error) {
+      console.log("Model Fetch Error:", error);
+    }
+
+    const make = data.makes.name;
+    const model = data.name;
+
+    title = `${make || ""} ${model || ""} ${frame_code || ""} ${
+      build_year || ""
+    }`.trim();
+  } catch (error) {
+    console.log(error);
+  }
+
+  if (!ad_id) {
+    return res.status(400).json({ message: "ad_id is required" });
+  }
+
+  try {
+    const { data, error } = await supabase
+      .from("ads_vehicles")
+      .update({
+        model_id: model_id,
+        frame_code: frame_code,
+        build_year: build_year,
+        transmission: transmission,
+        body_type: body_type,
+        vehicle_condition: vehicle_condition,
+        reg_year: reg_year,
+        mileage: mileage,
+        engine: engine,
+        colour: colour,
+        fuel_type: fuel_type,
+        price: price,
+        owner_comments: owner_comments,
+        owner_contact: owner_contact,
+        city_id: city_id,
+        owner_display_name: owner_display_name,
+        is_negotiable: is_negotiable,
+        title: title,
+      })
+      .match({ ad_id: ad_id })
+      .select();
+
+    if (error) {
+      return res.status(500).json({ message: "Database error", error });
+    }
+
+    // try {
+    //   const { error } = await supabase
+    //     .from("ad_images")
+    //     .delete()
+    //     .match({ ad_id: ad_id });
+
+    //   if (error) {
+    //     return res.status(500).json({ message: "Database error", error });
+    //   }
+    // } catch (error) {
+    //   console.log("failed to delete existing images");
+    // }
+
+    // Delete old images from storage & DB
+    await deleteImagesByAdId(ad_id, "ad_pics");
+
+    res.status(200).json({ message: "Ad updated successfully", data: data[0] });
   } catch (error) {
     res.status(500).json({ message: "Server error", error: error.message });
   }
@@ -333,4 +596,5 @@ module.exports = {
   getTrendingAds,
   getAd,
   getAdsByUser,
+  editAd,
 };
