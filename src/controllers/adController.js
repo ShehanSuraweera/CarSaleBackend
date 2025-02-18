@@ -183,7 +183,8 @@ const getAds = async (req, res) => {
       .select(
         `*, ad_images (image_url, created_at), cities!inner(name, districts!inner(name)), models!inner(name, vehicle_type_id, makes!inner(id,name))`
       )
-      .order("created_at", { ascending: false });
+      .order("created_at", { ascending: false })
+      .eq("is_deleted", false);
 
     if (query) {
       supabaseQuery = supabaseQuery.ilike("title", `%${query}%`);
@@ -279,6 +280,7 @@ const getTrendingAds = async (req, res) => {
       )
       .filter("models.makes.id", "eq", make_id) // Correct filtering
       .filter("models.vehicle_type_id", "eq", vehicle_type_id)
+      .filter("is_deleted", "eq", false)
       .order("views", { ascending: false })
       .limit(10);
 
@@ -333,6 +335,7 @@ const getAd = async (req, res) => {
       `
       )
       .eq("ad_id", ad_id)
+      .eq("is_deleted", false)
       .single();
 
     if (error) {
@@ -380,7 +383,8 @@ const getAdsByUser = async (req, res) => {
          cities!inner(name, district_id, districts!inner(name)),
          models!inner(name, vehicle_type_id, makes!inner(id,name))`
       )
-      .eq("user_id", id);
+      .eq("user_id", id)
+      .eq("is_deleted", false);
 
     if (error) {
       return res.status(500).json({ message: "Database error", error });
@@ -589,6 +593,30 @@ const editAd = async (req, res) => {
   }
 };
 
+const deleteAd = async (req, res) => {
+  const { ad_id } = req.body;
+
+  if (!ad_id) {
+    return res.status(400).json({ message: "AdID is required." });
+  }
+
+  try {
+    const { error } = await supabase
+      .from("ads_vehicles")
+      .update({ is_deleted: true })
+      .eq("ad_id", ad_id);
+
+    if (error) {
+      console.error("Error deleting ad:", error.message);
+      throw error;
+    }
+
+    res.status(200).json({ message: "Ad deleted successfully" });
+  } catch (error) {
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
+
 module.exports = {
   createAd,
   uploadAdImages,
@@ -597,4 +625,5 @@ module.exports = {
   getAd,
   getAdsByUser,
   editAd,
+  deleteAd,
 };

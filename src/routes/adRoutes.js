@@ -8,6 +8,7 @@ const {
   getAd,
   getAdsByUser,
   editAd,
+  deleteAd,
 } = require("../controllers/adController");
 const upload = require("../middleware/multer");
 
@@ -18,5 +19,6 @@ router.post("/trending-ads", getTrendingAds);
 router.post("/ad", getAd);
 router.post("/user-ads", getAdsByUser);
 router.post("/edit-ad", upload.none(), editAd);
+router.post("/delete-ad", deleteAd);
 
 module.exports = router;
