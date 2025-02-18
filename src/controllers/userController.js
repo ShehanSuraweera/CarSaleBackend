@@ -10,23 +10,38 @@ const profile = async (req, res) => {
   try {
     const { data: userData, error: userError } = await supabase
       .from("profiles")
-      .select("*, cities!inner(id,name, districts!inner(id,name))")
-      .eq("id", user_id)
-      .select();
+      .select(`*, cities(name, district_id, districts(id, name))`)
+      .eq("id", user_id);
+
     if (userError) {
       return res
         .status(500)
         .json({ error: "Database error", message: userError.message });
     }
 
-    res.status(200).json({ user: userData[0] });
+    const formattedDatas = userData.map((user) => {
+      const formattedData = {
+        ...user,
+        city: { name: user.cities.name, id: user.city_id },
+        district: {
+          name: user.cities.districts.name,
+          id: user.cities.districts.id,
+        },
+      };
+      delete formattedData.city_id;
+      delete formattedData.cities;
+
+      return formattedData;
+    });
+
+    res.status(200).json({ user: formattedDatas[0] });
   } catch (err) {
     res.status(500).json({ error: "Server error", message: err.message });
   }
 };
 
 const updateProfile = async (req, res) => {
-  const { user_id, name, phone, city, avatar_url } = req.body;
+  const { user_id, name, phone, city_id, avatar_url } = req.body;
 
   if (!user_id) {
     return res.status(400).json({ error: "User ID required" });
@@ -38,7 +53,7 @@ const updateProfile = async (req, res) => {
       .update({
         name: name,
         phone: phone,
-        city: city,
+        city_id: city_id,
       })
       .eq("id", user_id);
 
