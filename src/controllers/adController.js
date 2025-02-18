@@ -160,9 +160,8 @@ const getAds = async (req, res) => {
     query,
     make_id,
     model_id,
-    vehicle_type_id,
-    bodyType,
-    transmission,
+    body_type_id,
+    transmission_type_id,
     location,
     buildYear,
     district_id,
@@ -170,8 +169,6 @@ const getAds = async (req, res) => {
   } = req.query;
 
   let { maxMileage, maxPrice, minPrice } = req.query;
-
-  console.log(district_id);
 
   maxMileage = cleanString(maxMileage);
   maxPrice = cleanString(maxPrice);
@@ -190,13 +187,13 @@ const getAds = async (req, res) => {
       supabaseQuery = supabaseQuery.ilike("title", `%${query}%`);
     }
     if (make_id) {
-      supabaseQuery = supabaseQuery.eq("models.makes.make_id", make_id);
+      supabaseQuery = supabaseQuery.eq("models.makes.id", make_id);
     }
     if (model_id) {
       supabaseQuery = supabaseQuery.eq("model_id", model_id);
     }
-    if (bodyType) {
-      supabaseQuery = supabaseQuery.eq("body_type", bodyType);
+    if (body_type_id) {
+      supabaseQuery = supabaseQuery.eq("body_type_id", body_type_id);
     }
     if (minPrice) {
       supabaseQuery = supabaseQuery.gte("price", minPrice);
@@ -204,11 +201,12 @@ const getAds = async (req, res) => {
     if (maxPrice) {
       supabaseQuery = supabaseQuery.lte("price", maxPrice);
     }
-    if (bodyType) {
-      supabaseQuery = supabaseQuery.eq("body_type", bodyType);
-    }
-    if (transmission) {
-      supabaseQuery = supabaseQuery.eq("transmission", transmission);
+
+    if (transmission_type_id) {
+      supabaseQuery = supabaseQuery.eq(
+        "transmission_type_id",
+        transmission_type_id
+      );
     }
     if (location) {
       supabaseQuery = supabaseQuery.eq("ad_location", location);
