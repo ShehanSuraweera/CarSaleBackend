@@ -178,7 +178,7 @@ const getAds = async (req, res) => {
     let supabaseQuery = supabase
       .from("ads_vehicles")
       .select(
-        `*, ad_images (image_url, created_at), cities!inner(name, districts!inner(name)), models!inner(name, vehicle_type_id, makes!inner(id,name)), body_types (id,name)`
+        `*, ad_images (image_url, created_at), cities!inner(name, districts!inner(name)), models!inner(name, vehicle_type_id, makes!inner(id,name)), body_types (id,name) ,transmission_types (id,name)`
       )
       .order("created_at", { ascending: false })
       .eq("is_deleted", false);
@@ -240,6 +240,10 @@ const getAds = async (req, res) => {
         },
         images: ad.ad_images ? ad.ad_images.map((img) => img.image_url) : [],
         body_type: { name: ad.body_types.name, id: ad.body_type_id },
+        transmission_type: {
+          name: ad.transmission_types.name,
+          id: ad.transmission_types.id,
+        },
       };
 
       // Clean up unnecessary fields
@@ -249,6 +253,9 @@ const getAds = async (req, res) => {
       delete formattedAd.city_id;
       delete formattedAd.model_id;
       delete formattedAd.body_type_id;
+      delete formattedAd.body_types;
+      delete formattedAd.transmission_type_id;
+      delete formattedAd.transmission_types;
 
       return formattedAd;
     });
@@ -390,7 +397,7 @@ const getAdsByUser = async (req, res) => {
       .select(
         `*, ad_images (image_url, created_at),
          cities!inner(name, district_id, districts!inner(name)),
-         models!inner(name, vehicle_type_id, makes!inner(id,name))`
+         models!inner(name, vehicle_type_id, makes!inner(id,name)), body_types (id,name) , transmission_types (id,name)`
       )
       .eq("user_id", id)
       .eq("is_deleted", false);
@@ -412,6 +419,11 @@ const getAdsByUser = async (req, res) => {
           id: ad.cities.district_id,
         },
         images: ad.ad_images ? ad.ad_images.map((img) => img.image_url) : [],
+        body_type: { name: ad.body_types.name, id: ad.body_type_id },
+        transmission_type: {
+          id: ad.transmission_types.id,
+          name: ad.transmission_types.name,
+        },
       };
 
       // Clean up unnecessary fields
@@ -420,6 +432,10 @@ const getAdsByUser = async (req, res) => {
       delete formattedAd.cities;
       delete formattedAd.city_id;
       delete formattedAd.model_id;
+      delete formattedAd.body_type_id;
+      delete formattedAd.body_types;
+      delete formattedAd.transmission_type_id;
+      delete formattedAd.transmission_types;
 
       return formattedAd;
     });
