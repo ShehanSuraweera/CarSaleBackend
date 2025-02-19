@@ -125,8 +125,15 @@ const fetchModels = async (req, res) => {
 };
 
 const fetchBodyTypes = async (req, res) => {
+  const { vehicle_type_id } = req.query;
   try {
-    const { data, error } = await supabase.from("body_types").select("*");
+    let supabaseQuery = supabase.from("body_types").select(`*`).order("id");
+
+    if (vehicle_type_id) {
+      supabaseQuery = supabaseQuery.eq("vehicle_type_id", vehicle_type_id);
+    }
+
+    const { data, error } = await supabaseQuery;
     if (error) throw error;
     res.json(data);
   } catch (error) {

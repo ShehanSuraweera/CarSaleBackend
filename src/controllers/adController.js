@@ -6,8 +6,8 @@ const createAd = async (req, res) => {
     model_id,
     frame_code,
     build_year,
-    transmission,
-    body_type,
+    transmission_type_id,
+    body_type_id,
     vehicle_condition,
     reg_year,
     engine,
@@ -26,8 +26,8 @@ const createAd = async (req, res) => {
     !user_id ||
     !model_id ||
     !build_year ||
-    !transmission ||
-    !body_type ||
+    !transmission_type_id ||
+    !body_type_id ||
     !vehicle_condition ||
     !fuel_type ||
     !owner_contact ||
@@ -79,8 +79,8 @@ const createAd = async (req, res) => {
           model_id,
           frame_code,
           build_year,
-          transmission,
-          body_type,
+          transmission_type_id,
+          body_type_id,
           vehicle_condition,
           reg_year,
           mileage,
@@ -178,7 +178,7 @@ const getAds = async (req, res) => {
     let supabaseQuery = supabase
       .from("ads_vehicles")
       .select(
-        `*, ad_images (image_url, created_at), cities!inner(name, districts!inner(name)), models!inner(name, vehicle_type_id, makes!inner(id,name))`
+        `*, ad_images (image_url, created_at), cities!inner(name, districts!inner(name)), models!inner(name, vehicle_type_id, makes!inner(id,name)), body_types (id,name)`
       )
       .order("created_at", { ascending: false })
       .eq("is_deleted", false);
@@ -239,6 +239,7 @@ const getAds = async (req, res) => {
           id: ad.cities.district_id,
         },
         images: ad.ad_images ? ad.ad_images.map((img) => img.image_url) : [],
+        body_type: { name: ad.body_types.name, id: ad.body_type_id },
       };
 
       // Clean up unnecessary fields
@@ -247,6 +248,7 @@ const getAds = async (req, res) => {
       delete formattedAd.cities;
       delete formattedAd.city_id;
       delete formattedAd.model_id;
+      delete formattedAd.body_type_id;
 
       return formattedAd;
     });
@@ -329,7 +331,7 @@ const getAd = async (req, res) => {
         *,
         ad_images (image_url, created_at),
          cities!inner(name, district_id, districts!inner(name)),
-         models!inner(name, vehicle_type_id, makes!inner(id,name))
+         models!inner(name, vehicle_type_id, makes!inner(id,name)), body_types (id,name), transmission_types (id,name)
       `
       )
       .eq("ad_id", ad_id)
@@ -351,6 +353,11 @@ const getAd = async (req, res) => {
         id: data.cities.district_id,
       },
       images: data.ad_images ? data.ad_images.map((img) => img.image_url) : [],
+      body_type: { id: data.body_type_id, name: data.body_types.name },
+      transmission_type: {
+        id: data.transmission_type_id,
+        name: data.transmission_types.name,
+      },
     };
 
     delete formattedData.ad_images;
@@ -358,6 +365,10 @@ const getAd = async (req, res) => {
     delete formattedData.cities;
     delete formattedData.city_id;
     delete formattedData.model_id;
+    delete formattedData.body_type_id;
+    delete formattedData.body_types;
+    delete formattedData.transmission_type_id;
+    delete formattedData.transmission_types;
 
     updateViews(ad_id);
 
