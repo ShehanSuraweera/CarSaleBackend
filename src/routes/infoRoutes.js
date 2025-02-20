@@ -12,6 +12,8 @@ const {
   fetchModels,
   fetchBodyTypes,
   getTransmissionTypes,
+  getFuelTypes,
+  getVehicleConditions,
 } = require("../controllers/infoController");
 
 router.get("/districts", getAllDistricts);
@@ -24,4 +26,6 @@ router.get("/vehicle-makes", getAllMakes);
 router.get("/models", fetchModels);
 router.get("/body-types", fetchBodyTypes);
 router.get("/transmission-types", getTransmissionTypes);
+router.get("/fuel-types", getFuelTypes);
+router.get("/vehicle-conditions", getVehicleConditions);
 module.exports = router;

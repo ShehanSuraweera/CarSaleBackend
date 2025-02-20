@@ -8,11 +8,11 @@ const createAd = async (req, res) => {
     build_year,
     transmission_type_id,
     body_type_id,
-    vehicle_condition,
+    vehicle_condition_id,
     reg_year,
     engine,
     colour,
-    fuel_type,
+    fuel_type_id,
     owner_comments,
     owner_contact,
     owner_display_name,
@@ -28,8 +28,8 @@ const createAd = async (req, res) => {
     !build_year ||
     !transmission_type_id ||
     !body_type_id ||
-    !vehicle_condition ||
-    !fuel_type ||
+    !vehicle_condition_id ||
+    !fuel_type_id ||
     !owner_contact ||
     !city_id ||
     !owner_display_name ||
@@ -46,7 +46,7 @@ const createAd = async (req, res) => {
   try {
     const { data, error } = await supabase
       .from("models")
-      .select("name makes(name)")
+      .select("name, makes(name)")
       .eq("id", model_id)
       .single();
 
@@ -81,12 +81,12 @@ const createAd = async (req, res) => {
           build_year,
           transmission_type_id,
           body_type_id,
-          vehicle_condition,
+          vehicle_condition_id,
           reg_year,
           mileage,
           engine,
           colour,
-          fuel_type,
+          fuel_type_id,
           price,
           owner_comments,
           owner_contact,
@@ -178,7 +178,7 @@ const getAds = async (req, res) => {
     let supabaseQuery = supabase
       .from("ads_vehicles")
       .select(
-        `*, ad_images (image_url, created_at), cities!inner(name, districts!inner(name)), models!inner(name, vehicle_type_id, makes!inner(id,name)), body_types (id,name) ,transmission_types (id,name)`
+        `*, ad_images (image_url, created_at), cities!inner(name, districts!inner(name)), models!inner(name, vehicle_type_id, makes!inner(id,name)), body_types (id,name) ,transmission_types (id,name), fuel_types (id,name)`
       )
       .order("created_at", { ascending: false })
       .eq("is_deleted", false);
@@ -244,6 +244,7 @@ const getAds = async (req, res) => {
           name: ad.transmission_types.name,
           id: ad.transmission_types.id,
         },
+        fuel_type: { name: ad.fuel_types.name, id: ad.fuel_types.id },
       };
 
       // Clean up unnecessary fields
@@ -256,6 +257,7 @@ const getAds = async (req, res) => {
       delete formattedAd.body_types;
       delete formattedAd.transmission_type_id;
       delete formattedAd.transmission_types;
+      delete formattedAd.fuel_types;
 
       return formattedAd;
     });
@@ -338,7 +340,7 @@ const getAd = async (req, res) => {
         *,
         ad_images (image_url, created_at),
          cities!inner(name, district_id, districts!inner(name)),
-         models!inner(name, vehicle_type_id, makes!inner(id,name)), body_types (id,name), transmission_types (id,name)
+         models!inner(name,  makes!inner(id,name), vehicle_types!inner(id,name)), body_types (id,name), transmission_types (id,name), fuel_types (id,name), vehicle_conditions(id, name)
       `
       )
       .eq("ad_id", ad_id)
@@ -353,7 +355,10 @@ const getAd = async (req, res) => {
       ...data,
       make: { name: data.models.makes.name, id: data.models.makes.id },
       model: { name: data.models.name, id: data.model_id },
-      vehicle_type_id: data.models.vehicle_type_id,
+      vehicle_type: {
+        id: data.models.vehicle_types.id,
+        name: data.models.vehicle_types.name,
+      },
       city: { name: data.cities.name, id: data.city_id },
       district: {
         name: data.cities.districts.name,
@@ -364,6 +369,11 @@ const getAd = async (req, res) => {
       transmission_type: {
         id: data.transmission_type_id,
         name: data.transmission_types.name,
+      },
+      fuel_type: { id: data.fuel_types.id, name: data.fuel_types.name },
+      vehicle_condition: {
+        id: data.vehicle_conditions.id,
+        name: data.vehicle_conditions.name,
       },
     };
 
@@ -376,6 +386,8 @@ const getAd = async (req, res) => {
     delete formattedData.body_types;
     delete formattedData.transmission_type_id;
     delete formattedData.transmission_types;
+    delete formattedData.fuel_types;
+    delete formattedData.vehicle_conditions;
 
     updateViews(ad_id);
 
@@ -397,7 +409,7 @@ const getAdsByUser = async (req, res) => {
       .select(
         `*, ad_images (image_url, created_at),
          cities!inner(name, district_id, districts!inner(name)),
-         models!inner(name, vehicle_type_id, makes!inner(id,name)), body_types (id,name) , transmission_types (id,name)`
+         models!inner(name, vehicle_type_id, makes!inner(id,name)), body_types (id,name) , transmission_types (id,name) , fuel_types (id,name)`
       )
       .eq("user_id", id)
       .eq("is_deleted", false);
@@ -424,6 +436,7 @@ const getAdsByUser = async (req, res) => {
           id: ad.transmission_types.id,
           name: ad.transmission_types.name,
         },
+        fuel_type: { name: ad.fuel_types.name, id: ad.fuel_types },
       };
 
       // Clean up unnecessary fields
@@ -436,6 +449,7 @@ const getAdsByUser = async (req, res) => {
       delete formattedAd.body_types;
       delete formattedAd.transmission_type_id;
       delete formattedAd.transmission_types;
+      delete formattedAd.fuel_types;
 
       return formattedAd;
     });
@@ -499,35 +513,42 @@ const deleteImagesByAdId = async (ad_id, bucketName) => {
 
 const editAd = async (req, res) => {
   const {
-    ad_id,
     user_id,
-    model_id,
+
     frame_code,
     build_year,
-    transmission,
-    body_type,
-    vehicle_condition,
+
     reg_year,
     engine,
     colour,
-    fuel_type,
+
     owner_comments,
     owner_contact,
     owner_display_name,
     is_negotiable,
-    city_id,
   } = req.body;
 
-  let { price, mileage } = req.body;
+  let {
+    city_id,
+    fuel_type_id,
+    body_type_id,
+    vehicle_condition_id,
+    transmission_type_id,
+    model_id,
+    ad_id,
+    price,
+    mileage,
+  } = req.body;
 
   if (
+    !ad_id ||
     !user_id ||
     !model_id ||
     !build_year ||
-    !transmission ||
-    !body_type ||
-    !vehicle_condition ||
-    !fuel_type ||
+    !transmission_type_id ||
+    !body_type_id ||
+    !vehicle_condition_id ||
+    !fuel_type_id ||
     !owner_contact ||
     !city_id ||
     !owner_display_name ||
@@ -535,6 +556,23 @@ const editAd = async (req, res) => {
   ) {
     return res.status(400).json({ message: "mandotaory fields are required." });
   }
+
+  ad_id = Array.isArray(ad_id) ? Number(ad_id[0]) : Number(ad_id);
+  model_id = Array.isArray(model_id) ? Number(model_id[0]) : Number(model_id);
+  transmission_type_id = Array.isArray(transmission_type_id)
+    ? Number(transmission_type_id[0])
+    : Number(transmission_type_id);
+  body_type_id = Array.isArray(body_type_id)
+    ? Number(body_type_id[0])
+    : Number(body_type_id);
+  vehicle_condition_id = Array.isArray(vehicle_condition_id)
+    ? Number(vehicle_condition_id[0])
+    : Number(vehicle_condition_id);
+  fuel_type_id = Array.isArray(fuel_type_id)
+    ? Number(fuel_type_id[0])
+    : Number(fuel_type_id);
+  city_id = Array.isArray(city_id) ? Number(city_id[0]) : Number(city_id);
+
   if (price?.trim() == "") {
     price = null;
   }
@@ -573,14 +611,14 @@ const editAd = async (req, res) => {
         model_id: model_id,
         frame_code: frame_code,
         build_year: build_year,
-        transmission: transmission,
-        body_type: body_type,
-        vehicle_condition: vehicle_condition,
+        transmission_type_id: transmission_type_id,
+        body_type_id: body_type_id,
+        vehicle_condition_id: vehicle_condition_id,
         reg_year: reg_year,
         mileage: mileage,
         engine: engine,
         colour: colour,
-        fuel_type: fuel_type,
+        fuel_type_id: fuel_type_id,
         price: price,
         owner_comments: owner_comments,
         owner_contact: owner_contact,
@@ -596,20 +634,6 @@ const editAd = async (req, res) => {
       return res.status(500).json({ message: "Database error", error });
     }
 
-    // try {
-    //   const { error } = await supabase
-    //     .from("ad_images")
-    //     .delete()
-    //     .match({ ad_id: ad_id });
-
-    //   if (error) {
-    //     return res.status(500).json({ message: "Database error", error });
-    //   }
-    // } catch (error) {
-    //   console.log("failed to delete existing images");
-    // }
-
-    // Delete old images from storage & DB
     await deleteImagesByAdId(ad_id, "ad_pics");
 
     res.status(200).json({ message: "Ad updated successfully", data: data[0] });

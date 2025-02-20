@@ -153,6 +153,32 @@ const getTransmissionTypes = async (req, res) => {
   }
 };
 
+const getFuelTypes = async (req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from("fuel_types")
+      .select("*")
+      .order("id");
+    if (error) throw error;
+    res.json(data);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+const getVehicleConditions = async (req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from("vehicle_conditions")
+      .select("*")
+      .order("id");
+    if (error) throw error;
+    res.json(data);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
 module.exports = {
   getAllDistricts,
   getCitiesByDistrict,
@@ -164,4 +190,6 @@ module.exports = {
   fetchModels,
   fetchBodyTypes,
   getTransmissionTypes,
+  getFuelTypes,
+  getVehicleConditions,
 };
