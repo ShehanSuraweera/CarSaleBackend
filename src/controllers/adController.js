@@ -162,10 +162,12 @@ const getAds = async (req, res) => {
     model_id,
     body_type_id,
     transmission_type_id,
-    location,
     buildYear,
     district_id,
     city_id,
+    vehicle_type_id,
+    fuel_type_id,
+    vehicle_condition_id,
   } = req.query;
 
   let { maxMileage, maxPrice, minPrice } = req.query;
@@ -201,6 +203,21 @@ const getAds = async (req, res) => {
     if (maxPrice) {
       supabaseQuery = supabaseQuery.lte("price", maxPrice);
     }
+    if (vehicle_type_id) {
+      supabaseQuery = supabaseQuery.eq(
+        "models.vehicle_type_id",
+        vehicle_type_id
+      );
+    }
+    if (vehicle_condition_id) {
+      supabaseQuery = supabaseQuery.eq(
+        "vehicle_condition_id",
+        vehicle_condition_id
+      );
+    }
+    if (fuel_type_id) {
+      supabaseQuery = supabaseQuery.eq("fuel_type_id", fuel_type_id);
+    }
 
     if (transmission_type_id) {
       supabaseQuery = supabaseQuery.eq(
@@ -208,9 +225,7 @@ const getAds = async (req, res) => {
         transmission_type_id
       );
     }
-    if (location) {
-      supabaseQuery = supabaseQuery.eq("ad_location", location);
-    }
+
     if (maxMileage) {
       supabaseQuery = supabaseQuery.lte("mileage", maxMileage);
     }
