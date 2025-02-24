@@ -170,7 +170,11 @@ const getAds = async (req, res) => {
     vehicle_condition_id,
   } = req.query;
 
-  let { maxMileage, maxPrice, minPrice } = req.query;
+  let { maxMileage, maxPrice, minPrice, page, limit } = req.query;
+  page = parseInt(page, 10) || 1;
+  limit = parseInt(limit, 10) || 10;
+  const startIndex = (page - 1) * limit; // Calculate the start index
+  const endIndex = startIndex + limit - 1; // Calculate the end index
 
   maxMileage = cleanString(maxMileage);
   maxPrice = cleanString(maxPrice);
@@ -183,7 +187,9 @@ const getAds = async (req, res) => {
         `*, ad_images (image_url, created_at), cities!inner(name, districts!inner(name)), models!inner(name, vehicle_type_id, makes!inner(id,name)), body_types (id,name) ,transmission_types (id,name), fuel_types (id,name)`
       )
       .order("created_at", { ascending: false })
-      .eq("is_deleted", false);
+      .eq("is_deleted", false)
+      .limit(limit)
+      .range(startIndex, endIndex);
 
     if (query) {
       supabaseQuery = supabaseQuery.ilike("title", `%${query}%`);
@@ -278,6 +284,7 @@ const getAds = async (req, res) => {
     });
 
     if (error) return res.status(500).json({ error: error.message });
+
     res.json({ ads: formattedAds });
   } catch (error) {
     res.status(500).json({ message: "Server error", error: error.message });
