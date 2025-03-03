@@ -10,8 +10,14 @@ const profile = async (req, res) => {
   try {
     const { data: userData, error: userError } = await supabase
       .from("profiles")
-      .select(`*, cities(name, district_id, districts(id, name))`)
+      .select(`*`)
       .eq("id", user_id);
+
+    console.log(userData);
+
+    // .from("profiles")
+    // .select(`*, cities(name, district_id, districts(id, name))`)
+    // .eq("id", user_id);
 
     if (userError) {
       return res

@@ -15,6 +15,7 @@ app.use(
       "http://localhost:3000",
       "https://car-sale-pzbrsc9w8-shehan-suraweeras-projects.vercel.app",
       "https://car-sale-dev.vercel.app",
+      "https://wandilk-theta.vercel.app",
     ],
     credentials: true,
   })
