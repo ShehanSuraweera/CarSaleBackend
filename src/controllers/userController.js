@@ -6,18 +6,12 @@ const profile = async (req, res) => {
   if (!user_id) {
     return res.status(400).json({ error: "Invalid request" });
   }
-  // Query the database for user information
+
   try {
     const { data: userData, error: userError } = await supabase
       .from("profiles")
-      .select(`*`)
+      .select(`*, cities(name, district_id, districts(id, name))`)
       .eq("id", user_id);
-
-    console.log(userData);
-
-    // .from("profiles")
-    // .select(`*, cities(name, district_id, districts(id, name))`)
-    // .eq("id", user_id);
 
     if (userError) {
       return res
@@ -28,11 +22,10 @@ const profile = async (req, res) => {
     const formattedDatas = userData.map((user) => {
       const formattedData = {
         ...user,
-        city: { name: user.cities.name, id: user.city_id },
-        district: {
-          name: user.cities.districts.name,
-          id: user.cities.districts.id,
-        },
+        city: user.cities ? { name: user.cities.name, id: user.city_id } : null,
+        district: user.cities?.districts
+          ? { name: user.cities.districts.name, id: user.cities.districts.id }
+          : null,
       };
       delete formattedData.city_id;
       delete formattedData.cities;
