@@ -68,7 +68,86 @@ const updateProfile = async (req, res) => {
   }
 };
 
+const getUserLikedAds = async (req, res) => {
+  const { user_id } = req.body;
+
+  if (!user_id) {
+    return res.status(400).json({ error: "User ID required" });
+  }
+
+  try {
+    const { data: likedAds, error: likedAdsError } = await supabase
+      .from("liked_ads")
+      .select(`*`)
+      .eq("user_id", user_id);
+
+    if (likedAdsError) {
+      return res
+        .status(500)
+        .json({ error: "Database error", message: likedAdsError.message });
+    }
+
+    res.status(200).json({ likedAds });
+  } catch (err) {
+    res.status(500).json({ error: "Server error", message: err.message });
+  }
+};
+
+const likeAd = async (req, res) => {
+  const { userId, adId } = req.body;
+
+  if (!userId || !adId) {
+    return res.status(400).json({ error: "Invalid request" });
+  }
+
+  try {
+    const { error } = await supabase.from("liked_ads").upsert({
+      user_id: userId,
+      ad_id: adId,
+    });
+
+    if (error) {
+      return res
+        .status(500)
+        .json({ error: "Database error", message: error.message });
+    }
+
+    res.status(200).json({ message: "Ad liked successfully" });
+  } catch (err) {
+    res.status(500).json({ error: "Server error", message: err.message });
+  }
+};
+
+const unlikeAd = async (req, res) => {
+  const { userId, adId } = req.body;
+
+  if (!userId || !adId) {
+    return res.status(400).json({ error: "Invalid request" });
+  }
+
+  try {
+    const { error } = await supabase
+      .from("liked_ads")
+      .delete()
+      .eq("user_id", userId)
+      .eq("ad_id", adId);
+
+    if (error) {
+      return res
+        .status(500)
+        .json({ error: "Database error", message: error.message });
+    }
+
+    res.status(200).json({ message: "Ad unliked successfully" });
+  } catch (err) {
+    res.status(500).json({ error: "Server error", message: err.message });
+  }
+};
+
 module.exports = {
   profile,
   updateProfile,
+  getUserLikedAds,
+  likeAd,
+  unlikeAd,
 };
