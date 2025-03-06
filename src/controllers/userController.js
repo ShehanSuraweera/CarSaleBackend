@@ -68,7 +68,7 @@ const updateProfile = async (req, res) => {
   }
 };
 
-const getUserLikedAds = async (req, res) => {
+const getUserLikedAdIds = async (req, res) => {
   const { user_id } = req.body;
 
   if (!user_id) {
@@ -144,10 +144,89 @@ const unlikeAd = async (req, res) => {
   }
 };
 
+const getUserLikedAds = async (req, res) => {
+  const { user_id: userId } = req.body;
+
+  if (!userId) {
+    return res
+      .status(400)
+      .json({ message: "User ID is required to fetch liked ads" });
+  }
+
+  try {
+    const { data, error } = await supabase
+      .from("liked_ads")
+      .select(
+        `ads_vehicles(*, 
+          ad_images (image_url, created_at),
+          cities!inner(name, district_id, districts!inner(name)),
+          models!inner(name, vehicle_type_id, makes!inner(id,name)), 
+          body_types (id, name),
+          transmission_types (id, name),
+          fuel_types (id, name)
+        )`
+      )
+      .eq("user_id", userId)
+      .eq("ads_vehicles.is_approved", true);
+
+    if (error) {
+      return res.status(500).json({ message: "Database error", error });
+    }
+
+    // Format ads like in getAdsByUser
+    const formattedAds = data
+      .map(({ ads_vehicles: ad }) => {
+        if (!ad) return null; // Handle possible null values
+
+        const formattedAd = {
+          ...ad,
+          make: { name: ad.models.makes.name, id: ad.models.makes.id },
+          model: { name: ad.models.name, id: ad.model_id },
+          vehicle_type_id: ad.models.vehicle_type_id,
+          city: { name: ad.cities.name, id: ad.city_id },
+          district: {
+            name: ad.cities.districts.name,
+            id: ad.cities.district_id,
+          },
+          images: ad.ad_images ? ad.ad_images.map((img) => img.image_url) : [],
+          body_type: { name: ad.body_types.name, id: ad.body_type_id },
+          transmission_type: {
+            id: ad.transmission_types.id,
+            name: ad.transmission_types.name,
+          },
+          fuel_type: { name: ad.fuel_types.name, id: ad.fuel_types.id },
+        };
+
+        // Remove unnecessary fields
+        delete formattedAd.ad_images;
+        delete formattedAd.models;
+        delete formattedAd.cities;
+        delete formattedAd.city_id;
+        delete formattedAd.model_id;
+        delete formattedAd.body_type_id;
+        delete formattedAd.body_types;
+        delete formattedAd.transmission_type_id;
+        delete formattedAd.transmission_types;
+        delete formattedAd.fuel_types;
+
+        return formattedAd;
+      })
+      .filter(Boolean); // Remove any null values
+
+    return res.status(200).json({ ads: formattedAds });
+  } catch (error) {
+    console.error("Error fetching liked ads:", error.message);
+    return res
+      .status(500)
+      .json({ message: "Server error", error: error.message });
+  }
+};
+
 module.exports = {
   profile,
   updateProfile,
-  getUserLikedAds,
+  getUserLikedAdIds,
   likeAd,
   unlikeAd,
+  getUserLikedAds,
 };
