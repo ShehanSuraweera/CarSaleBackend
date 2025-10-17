@@ -9,7 +9,7 @@ const HOSTNAME = process.env.WEBSITE_HOSTNAME || `localhost:${PORT}`;
 app.listen(PORT, async () => {
   console.log(`Server running on http://${HOSTNAME}`);
   try {
-    const { error } = await supabase.from("users").select("*").limit(1);
+    const { error } = await supabase.from("profiles").select("*").limit(1);
     if (error) throw error;
     console.log("Database connection successful");
   } catch (err) {

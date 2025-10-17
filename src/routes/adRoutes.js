@@ -6,14 +6,19 @@ const {
   getAds,
   getTrendingAds,
   getAd,
+  getAdsByUser,
+  editAd,
+  deleteAd,
 } = require("../controllers/adController");
-const { validateToken } = require("../middleware/authMiddleware");
 const upload = require("../middleware/multer");
 
-router.post("/create", validateToken, upload.none(), createAd);
+router.post("/create", upload.none(), createAd);
 router.post("/upload-imageUrls", uploadAdImages);
 router.get("/ads", getAds);
 router.post("/trending-ads", getTrendingAds);
 router.post("/ad", getAd);
+router.post("/user-ads", getAdsByUser);
+router.post("/edit-ad", upload.none(), editAd);
+router.post("/delete-ad", deleteAd);
 
 module.exports = router;
